@@ -2,8 +2,11 @@
 
 Deployment:
 	https://code.visualstudio.com
+
 Use this site to download Visual Studio Code and then install the Live Server extension
+
 	Use Visual Studio Code live server extension to launch live server after opening the root directory in Visual Studio Code
+
 Implementation and Characteristics:
 	A 3d world has been created and textures have been used to setup skybox for the scene
 	Created 3 portals to 3 worlds using a form of collision detection using intersect function of Raycaster in three.js between the camera and the portal box geometries.
