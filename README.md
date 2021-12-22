@@ -11,21 +11,23 @@ Implementation and Characteristics:
 	A 3d world has been created and textures have been used to setup skybox for the scene
 	Created 3 portals to 3 worlds using a form of collision detection using intersect function of Raycaster in three.js between the camera and the portal box geometries.
 	Created a movement system for the user along with several other key inputs that can be used to make changes throughout the scenes  
+
 Scene Forest
 o	A basic plane geometry created to hold the scene. The plane has been mapped with different textures which can be toggled and changed. Environment maps, bump maps and normal maps have been used
 o	Created a chunk of big tree and small tree models using FBX loader and they are randomly positioned everytime the application is opened
 o	Implemented lights which move around the trees
 o	Implemeted a 3d character in the scene along with lights around it
+
 Scene Valley
 o	Implemented a plane to hold the scene, implemented a plane geometry with water texture to create a lake
 o	Implemented model of Buddha on a rock and a model of girl swimming along with 3 lights which move around the Buddha and rotating tetrahedron geometries with lights which move around the scene like birds based on sin and cos values
 o	Implemented valley skybox, textured buddha model and created movement for the swimmer, along with camera following the flying lights. 
+
 Scene RedLake
 o	Implemented a plane to hold the scene, implemented a plane geometry with water texture to create a lake
 o	Implemented chunks of models throughout the scene with lights moving around them
 o	The statue model has been bump mapped and the girl head model has been environment mapped, along with a floating like animation. 
 o	Models can also be rotated
-
 
 User Manual:
 	Move Around: W, A, S, D
@@ -51,10 +53,6 @@ Scene RedLake:
 	Rotate Objects: Hold R
 	Toggle Statue Lights: Z
 	Toggle Girl Lights: Y
-
-
-
-
 
 
 
