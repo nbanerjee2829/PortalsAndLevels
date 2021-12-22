@@ -1,0 +1,2057 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>My ADHD</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="./css/main.css">
+		<style>
+			#blocker {
+				position: absolute;
+				width: 100%;
+				height: 100%;
+				background-color: rgba(0,0,0,0.5);
+			}
+
+			#instructions {
+				width: 100%;
+				height: 100%;
+
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+
+				text-align: center;
+				font-size: 14px;
+				cursor: pointer;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="blocker">
+			<div id="instructions">
+				<p style="font-size:36px">
+					Click to Play
+				</p>
+				<p>
+					Move: WASD<br/>
+					Move Up/Down: SPACE, Ctrl<br/>
+					Toggle Follow Light: C<br/>
+					Look: MOUSE
+				</p>
+				<p id="loading"> Loading ... </p> 
+				Check out the video <a style= "color: deepskyblue;"href="https://youtu.be/vwmu6XbQ4U8" target="_blank">Video</a>
+			
+			</div>
+		</div>
+
+		<script type="module">
+
+			import * as THREE from './js/three.module.js';
+			import { FBXLoader } from './js/FBXLoader.js';
+			import { PointerLockControls } from './js/PointerLockControls.js';
+			import { OrbitControls } from './js/OrbitControls.js';
+			import * as BufferGeometryUtils from './js/BufferGeometryUtils.js';
+			import { Water } from './js/Water2.js';
+			import { FontLoader } from './js/FontLoader.js';
+			import { TextGeometry } from './js/TextGeometry.js';
+
+			let camera, scene, renderer, PointControls, controlsOrbit;
+		
+			let texSkybox = [];
+			let texSkybox1, texSkybox2, texSkybox3;
+			let water, waterRed;
+			const objectsToStandOn = [];
+
+			// raycasting
+			let raycaster;
+			const userRayCaster = new THREE.Raycaster();
+			const mouse = new THREE.Vector2();
+			let intersects;
+			let Interactables = [];
+
+			// movement
+			let moveForward = false;
+			let moveBackward = false;
+			let moveLeft = false;
+			let moveRight = false;
+			// let canJump = false;
+			let canRotateStatues = false;
+			let canMoveSwimmer = false;
+			
+
+			let portalCubes = []; 
+			let movingLights = [];
+			let FloatingHeads = [];
+			let BigTrees =[];
+			let smallTrees = [];
+
+			let prevTime = performance.now();
+			const velocity = new THREE.Vector3();
+			const direction = new THREE.Vector3();
+			const vertex = new THREE.Vector3();
+			const color = new THREE.Color();
+
+			let light1, pointLightHelper;
+			let light1Speed = 0.05;
+
+			const clock = new THREE.Clock();
+			let swimmer, mixerSwimmer,mixerArcher,mixerButterfly, butterfly,rock;
+			let portalAnimation = true;
+			let skyboxCube1,skyboxCube2,skyboxCube3;
+			let portalRotationSpeed = 0.05;
+			let box1,  box3;
+			let box32;
+			let tree;
+
+			const params = {
+				color: '#ffffff',
+				scale: 4,
+				flowX: 1,
+				flowY: 1
+			};
+
+			let floor,floor2, floor3;
+			let boss;
+			let statue;
+
+			let girl;
+			let statues = [];
+			let statuesSpeed = 0.002;
+			let girlHead = [];
+			let girlHeadSpeed = 0.004;
+
+			let ambientLight;
+
+			let swimSpeed = 0.02;
+			let buddha;
+			let sittingArcher;
+
+			let treeBoxes = [];
+			let smallTreeBoxes = [];
+			let sTreeMovingLights = [];
+			let archerBox, buddhaBox;
+			let girlHeadsBoxes= [], girlLights=[];
+			let statueBoxes = [], statueLights=[];
+			let valleyLights = [];
+
+			let buddhaLights = [];
+
+			let bumpFloor = false;
+			let valleyLightsFly = true;
+			let flyingLight = 0;
+			let canFly = false;
+			let removerock = false;
+
+			let levelTexts = [];
+			let levelTutorialTexts = [];
+			let levelStrings = [
+				"Portals",
+				 "Forest",
+				  "Valley ",
+				   "RedLake"];
+
+			let levelTutorialStrings = [
+			"Forest",
+				"Toggle Floor Vertex Color: F\nChange Floor Texture: G\nAdd/Remove Bump: H\nToggle Big Tree Lights: T\nToggle Other Lights: Y\nOrigin: P",
+				"Toggle Fly: K, Next Model: L\nPause Flying: V, Origin: P\nShow/Hide Rock: O\nToggle Buddha Lights: I\nMove Swimmer: Hold M",
+				"Rotate Models: R\nToggle Statue Light: Z\nToggle Girl Light: N\nOrigin: P",
+				   ];
+
+			let rotateTutorial = false;
+			let toggleSmallTreeLights = false;
+			let toggleBigTreeLights = false;
+			let toggleStatueLights = false;
+			let toggleGirlLights = false;
+			let toggleBuddhaLights = false;
+			let toggleMovingLight = false;
+
+			init();
+			animate();
+
+			function init() {
+
+				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 1000 );
+				camera.position.set(0,5,70);
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xffffff );
+				scene.fog = new THREE.Fog( 0x1B2BA5, 0, 1200 );
+
+				//#region Texture Loading
+
+				//#region Skybox
+				const texLoaderSkybox1 = new THREE.CubeTextureLoader();
+				texLoaderSkybox1.setPath( './textures/NightSky/' );
+
+				texSkybox1 = texLoaderSkybox1.load( [ 'posx.png', 'negx.png', 'posy.png', 'negy.png', 'posz.png', 'negz.png' ] );
+				texSkybox.encoding = THREE.sRGBEncoding;
+				
+				
+				const texLoaderSkybox2 = new THREE.CubeTextureLoader();
+				texLoaderSkybox2.setPath( './textures/Meadow/' );
+
+				texSkybox2 = texLoaderSkybox2.load( [ 'meadow_ft.jpg', 'meadow_bk.jpg', 'meadow_up.jpg', 'meadow_dn.jpg', 'meadow_rt.jpg', 'meadow_lf.jpg' ] );
+				texSkybox2.encoding = THREE.sRGBEncoding;
+
+
+				const texLoaderSkybox3 = new THREE.CubeTextureLoader();
+				texLoaderSkybox3.setPath( './textures/Mystic/' );
+
+				texSkybox3 = texLoaderSkybox3.load( [ 'mystic_ft.jpg', 'mystic_bk.jpg', 'mystic_up.jpg', 'mystic_dn.jpg', 'mystic_rt.jpg', 'mystic_lf.jpg' ] );
+				texSkybox3.encoding = THREE.sRGBEncoding;
+
+				texSkybox.push(texSkybox1);
+				texSkybox.push(texSkybox2);
+				texSkybox.push(texSkybox3);
+				//#endregion
+
+				//#region Texture
+				scene.background  =  texSkybox[2];
+				const mapHeight = new THREE.TextureLoader().load( "./textures/blue-wall-bump.jpg");
+				const groundTex = new THREE.TextureLoader().load( "./textures/ground2.png");
+				const mapHeight1 = new THREE.TextureLoader().load( "./textures/blue-wall-bump.jpg");
+				const buddhaNormal = new THREE.TextureLoader().load( "./textures/Buddha_Normals.tif");
+				
+				//Skin texture
+				const skinTex = new THREE.TextureLoader().load( "./textures/skin.jpg");
+				//#endregion
+
+				//#endregion
+				
+				//#region Text and Font Loading
+				const textLoader = new FontLoader();
+
+				for(let i = 0; i < 4; i++ )
+				{
+					textLoader.load( './fonts/gentilis_regular.typeface.json', function ( font ) {
+
+					const textGeom = new TextGeometry( levelTutorialStrings[i], {
+						font: font,
+						size: 5,
+						height: 2,
+					} );
+
+					const textTutorialMesh = new THREE.Mesh(textGeom, [
+						new THREE.MeshPhongMaterial({color: 0xffffff}),
+						new THREE.MeshPhongMaterial({color: 0xffffff})
+					])
+
+					textTutorialMesh.castShadow = true;
+					textTutorialMesh.position.y +=50;
+					textTutorialMesh.position.z +=150;
+					textTutorialMesh.rotation.y = Math.PI;
+					levelTutorialTexts.push(textTutorialMesh);
+					} );
+
+				}
+				const textTutorialLoader = new FontLoader();
+				for(let i = 0; i < 4; i++ )
+				{
+					textTutorialLoader.load( './fonts/gentilis_regular.typeface.json', function ( font ) {
+
+					const textTutorialGeom = new TextGeometry( levelStrings[i], {
+						font: font,
+						size: 50,
+						height: 3,
+						// curveSegments: 12,
+						// bevelEnabled: true,
+						// bevelThickness: 10,
+						// bevelSize: 8,
+						// bevelOffset: 0,
+						// bevelSegments: 5
+					} );
+
+					const textMesh = new THREE.Mesh(textTutorialGeom, [
+						new THREE.MeshPhongMaterial({color: 0xffffff}),
+						new THREE.MeshPhongMaterial({color: 0xffffff})
+					])
+
+					textMesh.castShadow = true;
+					textMesh.position.y +=150;
+					textMesh.position.z +=500;
+
+					if(i>0)
+					{
+						textMesh.rotation.y = Math.PI;
+					}
+					
+					levelTexts.push(textMesh);
+					// scene.add(textMesh);
+
+					} );
+
+				}
+				//#endregion
+				
+				//#region 3D Models Loading
+
+				// Loading Swimmer
+				const loader = new FBXLoader();
+				loader.load( './models/Treading Water.fbx', function ( object ) {
+
+					object.traverse( function ( child ) {
+
+						if ( child.isMesh ) {
+
+							child.castShadow = true;
+							child.receiveShadow = true;
+							
+						}
+
+					} );
+					mixerSwimmer = new THREE.AnimationMixer( object );
+
+					const action = mixerSwimmer.clipAction( object.animations[0] );
+					swimmer = object;
+					action.play();
+					swimmer.position.set(0,-18,80);
+					swimmer.scale.set(0.08,0.08,0.08);
+					swimmer.rotation.y = Math.PI/2;
+					// scene.add( swimmer );
+					animate();
+
+				} ,
+				function ( xhr ) {
+						document.getElementById("loading").innerHTML = "Loading "  + Math.floor(xhr.loaded / xhr.total * 100) + '% loaded';
+					},
+
+				);
+
+				// Loading archer
+				const archerLoader = new FBXLoader();
+				archerLoader.load( './models/Standing Idle 02.fbx', function ( object ) {
+
+					
+
+					object.traverse( function ( child ) {
+
+						if ( child.isMesh ) {
+
+							child.castShadow = true;
+							child.receiveShadow = true;
+							
+						}
+
+					} ,function ( xhr ) {
+					},);
+					mixerArcher = new THREE.AnimationMixer( object );
+
+					const idle = mixerArcher.clipAction( object.animations[1] );
+					sittingArcher = object;
+					idle.play();
+					sittingArcher.position.set(0, 0 ,40);
+					sittingArcher.scale.set(0.09,0.09,0.09);
+					sittingArcher.rotation.y = Math.PI/2;
+					let geo = new THREE.BoxGeometry(5, 5, 5 );
+					let mat = new THREE.MeshPhongMaterial( {envMap: texSkybox[1]} );
+					mat.castShadow = true;
+					archerBox = new THREE.Mesh( geo, mat );
+					// scene.add( archerBox );
+					
+
+					scene.add( sittingArcher );
+
+					animate();
+
+				} );
+
+				const Skinmaterial = new THREE.MeshPhongMaterial( {
+					color:0xFFF8C8,
+					specular: 0x222222,
+					shininess: 2,
+					envMap:mapHeight1,
+				} );
+				const Skinmaterial1 = new THREE.MeshPhongMaterial( {
+					color:0x9AA3BA,
+					shininess: 30,
+					bumpMap:skinTex,
+					bumpScale:4,
+				} );
+
+				const Skinmaterial2 = new THREE.MeshPhongMaterial( {
+					color:0xFFD44F,
+					specular: 0xAE7A31,
+					shininess: 30,
+					bumpMap:buddhaNormal,
+					bumpScale:4,
+				} );
+
+				// Loading Female Statue
+				const statueLoader = new FBXLoader();
+				
+				for(let i=-2; i< 5; i++)
+				{
+					statueLoader.load( './models/girlModel2/scan.fbx', function ( object ) {
+					object.traverse( function ( child ) {
+
+						if ( child.isMesh ) {
+
+							child.castShadow = true;
+							child.receiveShadow = true;
+							child.material =Skinmaterial1;
+						}
+
+					} );
+
+					statue = object;	
+					statue.rotation.y = Math.random() * 5;
+					statue.position.x= i*60 + Math.random() * 200;
+					statue.position.y = 10;
+					statue.position.z = 60* i + Math.random() * 200;
+					statue.scale.set(0.008,0.008,0.008);
+
+					let geo = new THREE.BoxGeometry(10, 10, 10 );
+					let mat = new THREE.MeshPhongMaterial( {envMap: texSkybox[1]} );
+					mat.castShadow = true;
+					let statuebox = new THREE.Mesh( geo, mat );
+					statuebox.position.copy(statue.position);
+
+					statueBoxes.push(statuebox);
+					statues.push(statue);
+					// animate();
+
+					} );
+				}
+			
+
+				// Loading Girl Model
+				const girlLoader = new FBXLoader();
+				
+				for(let i=-5; i<6; i++)
+				{
+					girlLoader.load( './models/girlHead.fbx', function ( object ) {
+					object.traverse( function ( child ) {
+
+						if ( child.isMesh ) {
+
+							child.castShadow = true;
+							child.receiveShadow = true;
+							child.material = Skinmaterial;
+							// child. = skinTex;
+						}
+						
+					} );
+					girl = object;	
+					girl.rotation.x = Math.random() * 20;
+					girl.rotation.y = Math.random() * 20;
+					girl.rotation.z = Math.random() * 20;
+
+					girl.position.x= 50*i + Math.random() * 100;
+					girl.position.y = 2;
+					girl.position.z =50 *i + Math.random() * 100;
+					girl.scale.set(0.1,0.1,0.1);
+					let geo = new THREE.BoxGeometry(10, 10, 10 );
+					let mat = new THREE.MeshPhongMaterial( {envMap: texSkybox[1]} );
+					mat.castShadow = true;
+					let girlbox = new THREE.Mesh( geo, mat );
+					girlbox.position.copy(girl.position);
+				
+					girlHeadsBoxes.push(girlbox);
+					girlHead.push(girl);
+					} );
+				}
+
+
+				// Loading RockModel
+				const rockLoader = new FBXLoader();
+				rockLoader.load( './models/rock2.fbx', function ( object ) {
+					object.traverse( function ( child ) {
+
+						if ( child.isMesh ) {
+
+							child.castShadow = true;
+							child.receiveShadow = true;
+
+						}
+
+					} );					
+					rock = object;
+					scene.add( rock );
+					rock.position.set(50,-2,400);
+
+					rock.rotation.y = -Math.PI;
+					rock.scale.set(300,300,300);
+					const boxGeometry1 = new THREE.BoxGeometry( 20, 25, 20 ).toNonIndexed();
+					const boxMaterial1 = new THREE.MeshPhongMaterial( { specular: 0xffffff, flatShading: true, vertexColors: true } );
+
+					box1 = new THREE.Mesh( boxGeometry1, boxMaterial1 );
+					box1.position.copy(rock);
+				} );
+
+				// Loading Buddha Model
+				const buddhaLoader = new FBXLoader();
+				buddhaLoader.load( './models/Buddha_FBX.fbx', function ( object ) {
+					object.traverse( function ( child ) {
+
+						if ( child.isMesh ) {
+
+							child.castShadow = true;
+							child.receiveShadow = true;
+							child.material = Skinmaterial2;
+
+						}
+
+					} );					
+					buddha = object;
+					buddha.position.set(50,40,350);
+
+					buddha.rotation.y = -Math.PI;
+					buddha.scale.set(0.5,0.5,0.5);
+					let geo = new THREE.BoxGeometry(10, 10, 10 );
+					let mat = new THREE.MeshPhongMaterial( {envMap: texSkybox[1]} );
+					mat.castShadow = true;
+					buddhaBox = new THREE.Mesh( geo, mat );
+					buddhaBox.position.copy(buddha.position);
+				
+				},function ( xhr ) {
+					} );
+
+
+				//#region Loading Trees
+
+				//Loading Big trees
+				const bigTreeLoader = new FBXLoader();
+				for(let i = -1; i< 2; i++)
+				{
+					bigTreeLoader.load( './models/oak.fbx', function ( object ) {
+						object.traverse( function ( child ) {
+
+							if ( child.isMesh ) {
+
+								child.castShadow = true;
+								child.receiveShadow = true;
+							}
+
+						} );
+						tree = object;
+						
+						tree.position.x+=100*i;
+						tree.position.y = 30;
+						tree.position.z = Math.random() * 100;
+						tree.scale.set(200,200,200);
+						let geo = new THREE.BoxGeometry( 3, 3, 3 );
+						let mat = new THREE.MeshPhongMaterial( {envMap: texSkybox[i+1]} );
+						mat.castShadow = true;
+						let treeloc = new THREE.Mesh( geo, mat );
+						treeloc.position.x = tree.position.x;
+						treeloc.position.y = tree.position.y;
+						treeloc.position.z = tree.position.z + 60;
+						scene.add( tree );
+						BigTrees.push(tree);
+						treeBoxes.push(treeloc);
+
+					} );
+						
+				}
+				
+				// Loading Small Trees
+				const smallTreeLoader = new FBXLoader();
+				for(let i = -1; i< 5; i++)
+				{
+					smallTreeLoader.load( './models/smallOak2.fbx', function ( object ) {
+						object.traverse( function ( child ) {
+
+							if ( child.isMesh ) {
+
+								child.castShadow = true;
+								child.receiveShadow = true;
+							}
+
+						} );
+						let stree = object;
+						
+						stree.position.x=Math.random() * 200;
+						stree.position.y = 5;
+						stree.position.z = Math.random() * 200;
+						stree.scale.set(50,50,50);
+						let geo = new THREE.BoxGeometry(5, 5, 5 );
+						let mat = new THREE.MeshPhongMaterial( {envMap: texSkybox[i+1]} );
+						mat.castShadow = true;
+						let treeloc = new THREE.Mesh( geo, mat );
+						treeloc.position.x = stree.position.x;
+						treeloc.position.y = stree.position.y;
+						treeloc.position.z = stree.position.z + 32;
+						scene.add( stree );
+						smallTreeBoxes.push(treeloc);
+						smallTrees.push(stree);
+
+					} );
+				}
+
+				//#endregion
+				
+			//#endregion
+
+				//#region Portals Loading
+
+				for( let i = -1; i< 2; i++)
+				{
+
+					const geometry = new THREE.BoxGeometry( 10, 30, 1 );
+					const material = new THREE.MeshPhongMaterial( {envMap: texSkybox[i+1]} );
+					material.castShadow = true;
+					const cube = new THREE.Mesh( geometry, material );
+					cube.position.y = 10;
+					cube.position.z = 30;
+					cube.position.x = i * 30 ;
+					scene.add( cube );
+					portalCubes.push(cube);
+					objectsToStandOn.push(cube);
+				}
+				
+				//#endregion
+				
+				//#region Lights Setup
+
+				// Ambient Light
+				ambientLight  = new THREE.AmbientLight( 0xFFFFFF , 1);
+				ambientLight.intensity = 1;
+				scene.add(ambientLight);
+				
+				// Spot Light
+				const spotLight = new THREE.SpotLight( 0x1B2BA5 , 1);
+				spotLight.position.set( 0, 500, 5);
+			
+				spotLight.castShadow = false;
+
+				spotLight.shadow.mapSize.width = 1024;
+				spotLight.shadow.mapSize.height = 1024;
+
+				spotLight.shadow.camera.near = 500;
+				spotLight.shadow.camera.far = 4000;
+				spotLight.shadow.camera.fov = 60;
+				spotLight.penumbra = 0.5;
+
+				scene.add( spotLight );
+				const spotLightHelper = new THREE.SpotLightHelper( spotLight );
+				scene.add( spotLightHelper );
+
+				// geometry for lights
+				const sphere3 = new THREE.SphereGeometry( 0.5, 16, 8 );
+				
+				// Point Lights
+				light1 = new THREE.PointLight( 0x33DE21, 10,40 );
+				light1.position.set( 0, 100, 0 );
+				light1.add( new THREE.Mesh( sphere3, new THREE.MeshPhongMaterial( { color: 0x33DE21 } ) ) );
+				scene.add( light1 );
+				
+				// creating lights for Big trees
+				for(let i = 0; i < 9; i++)
+				{
+					let plight = new THREE.PointLight( 0xffffff, 10, 20 );
+					
+					plight.position.set( i*10, 30, 30 );
+					plight.add( new THREE.Mesh( sphere3, new THREE.MeshPhongMaterial( { color: 0xffffff } ) ) );
+					movingLights.push(plight);
+					scene.add(plight);
+				}
+
+				// creating lights for small trees
+				for(let i = 0; i < 9; i++)
+				{
+					let plight = new THREE.PointLight( 0xFFF62F, 10, 20 );
+					let plightsphereMat = new THREE.MeshBasicMaterial( { color: 0xFFF62F } )
+					
+					if(i>5 && i<=8)
+					{
+						plight = new THREE.PointLight( 0xDE1105, 10, 40 );
+						plightsphereMat = new THREE.MeshBasicMaterial( { color: 0xDE1105 } )
+					}
+					plight.position.set( i*10, 30, 30 );
+					plight.add( new THREE.Mesh( sphere3, plightsphereMat ) );
+					sTreeMovingLights.push(plight);
+					scene.add(plight);
+				}
+				
+				const budhhalightsSphere = new THREE.TetrahedronGeometry( 3, 0 );
+				
+				// buddha lights
+				for(let i = 0; i < 3; i++)
+				{
+					let blight = new THREE.PointLight( 0xA7733C, 10, 40 );
+					
+					blight.position.set( i*10, 30, 30 );
+					blight.add( new THREE.Mesh( budhhalightsSphere, new THREE.MeshStandardMaterial( { color: 0xA7733C } ) ) );
+					scene.add(blight);
+					buddhaLights.push(blight);
+				}
+
+				//light for girl heads
+				for(let i = 0; i < 11; i++)
+				{
+					let glight = new THREE.PointLight( 0xffffff, 10, 40 );
+					let glightmat = new THREE.MeshBasicMaterial( { color: 0xffffff } )
+					
+					glight.position.set( i*10, 30, 30 );
+					glight.add( new THREE.Mesh( sphere3, glightmat ) );
+					girlLights.push(glight);
+					scene.add(glight);
+				}
+
+				// light for statues
+				for(let i = 0; i < 7; i++)
+				{
+					let statlight = new THREE.PointLight( 0xDE0000, 10, 20 );
+					let statlightmat = new THREE.MeshBasicMaterial( { color: 0xDE0000 } )
+					
+					statlight.position.set( i*10, 30, 30 );
+					statlight.add( new THREE.Mesh( sphere3, statlightmat ) );
+					statueLights.push(statlight);
+					scene.add(statlight);
+				}
+
+				//light in valley
+				for(let i = 0; i < 8; i++)
+				{
+					let valleyLight = new THREE.PointLight( 0xA7733C, 60, 40 );
+					let valleyLightmat = new THREE.MeshPhongMaterial( { color: 0xA7733C } )
+					
+					valleyLight.position.set( i*10, 30, 30 );
+					valleyLight.add( new THREE.Mesh( budhhalightsSphere, valleyLightmat ) );
+					valleyLights.push(valleyLight);
+					scene.add(valleyLight);
+				}
+			
+				//#endregion
+			
+				//#region Controls
+				PointControls = new PointerLockControls( camera, document.body );
+				
+				const blocker = document.getElementById( 'blocker' );
+				const instructions = document.getElementById( 'instructions' );
+				
+				instructions.addEventListener( 'click', function () {
+
+					PointControls.lock();
+					
+				} );
+
+				PointControls.addEventListener( 'lock', function () {
+
+					instructions.style.display = 'none';
+					blocker.style.display = 'none';
+
+				} );
+
+				PointControls.addEventListener( 'unlock', function () {
+
+					blocker.style.display = 'block';
+					instructions.style.display = '';
+
+				} );
+
+				scene.add( PointControls.getObject() );
+
+				const onKeyDown = function ( event ) {
+
+					switch ( event.code ) {
+
+						case 'ArrowUp':
+						case 'KeyW':
+							moveForward = true;
+							break;
+
+						case 'ArrowLeft':
+						case 'KeyA':
+							moveLeft = true;
+							break;
+
+						case 'ArrowDown':
+						case 'KeyS':
+							moveBackward = true;
+							break;
+
+						case 'ArrowRight':
+						case 'KeyD':
+							moveRight = true;
+							break;
+
+						case 'Space':
+							PointControls.getObject().position.y+=1;
+							break;
+						case 'ControlLeft':
+							PointControls.getObject().position.y-=1;
+							break;
+						case 'KeyR':
+							canRotateStatues = true;
+							break;
+
+						case 'KeyM':
+							canMoveSwimmer = true;
+							break;
+
+						// set camera back to origin
+						case 'KeyP':
+							PointControls.getObject().position.set(0,0,0);
+							break;
+
+							// toggle vertex colors
+						case 'KeyF':
+							floor2.material.vertexColors = !floor2.material.vertexColors;
+							floor2.material.needsUpdate = true;
+							break;
+
+							// Changing between EnvMap and Map
+						case 'KeyG':
+
+							if(floor2.material.map == groundTex)
+							{
+								floor2.material.envMap = texSkybox[0];
+								floor2.material.map = null;
+							}
+							else if(floor2.material.map == null)
+							{
+								floor2.material.map = groundTex;
+								floor2.material.envMap = null;
+								
+							}
+							floor2.material.needsUpdate = true;
+							break;
+
+							// Adding bump Map
+						case 'KeyH':
+							if(floor2.material.bumpMap == null)
+							{
+								floor2.material.bumpMap = mapHeight;
+							}
+							else if(floor2.material.bumpMap!=null)
+							{
+								floor2.material.bumpMap = null;
+							}
+							floor2.material.needsUpdate = true
+							break;
+
+						case 'KeyV':
+							valleyLightsFly = !valleyLightsFly;
+							break;
+
+						case 'KeyK':
+							canFly=!canFly;
+							break;
+
+						case 'KeyL':
+							flyingLight+=1;
+							if(flyingLight > 7)
+							{
+								flyingLight = 0;
+							}
+							break;
+
+						case 'KeyO':
+							removerock = !removerock;
+							break;
+
+						case 'KeyT':
+							toggleBigTreeLights = !toggleBigTreeLights;
+							break;
+
+						case 'KeyY':
+							toggleSmallTreeLights = !toggleSmallTreeLights;
+							break;
+
+						case 'KeyU':
+							toggleswimmerLights = !toggleswimmerLights;
+							break;
+
+						case 'KeyI':
+							toggleBuddhaLights = !toggleBuddhaLights;
+							break;
+
+						case 'KeyN':
+							toggleGirlLights = !toggleGirlLights;
+							break;
+
+						case 'KeyZ':
+							toggleStatueLights = !toggleStatueLights;
+							break; 
+
+						case 'KeyC':
+							toggleMovingLight = !toggleMovingLight;
+							break; 
+
+						case 'KeyX':
+							rotateTutorial = !rotateTutorial;
+							if(scene.includes(...sTreeMovingLights))
+							{
+								scene.remove(...sTreeMovingLights);
+							}
+							if(scene.background == texSkybox[0] && !scene.includes(...sTreeMovingLights))
+							{
+								scene.add(...sTreeMovingLights);
+							}
+							break;
+					}
+
+				};
+
+				const onKeyUp = function ( event ) {
+
+					switch ( event.code ) {
+
+						case 'ArrowUp':
+						case 'KeyW':
+							moveForward = false;
+							break;
+
+						case 'ArrowLeft':
+						case 'KeyA':
+							moveLeft = false;
+							break;
+
+						case 'ArrowDown':
+						case 'KeyS':
+							moveBackward = false;
+							break;
+
+						case 'ArrowRight':
+						case 'KeyD':
+							moveRight = false;
+							break;
+						case 'KeyR':
+							canRotateStatues = false;
+						break;
+						case 'KeyM':
+							canMoveSwimmer = false;
+							break;
+						case 'Space':
+							break;
+					}
+
+				};
+
+				document.addEventListener( 'keydown', onKeyDown );
+				document.addEventListener( 'keyup', onKeyUp );
+//#endregion
+				
+
+				raycaster = new THREE.Raycaster( new THREE.Vector3(), new THREE.Vector3( 0, - 1, 0 ), 0, 10 );
+
+				userRayCaster.setFromCamera(mouse,camera);
+				
+				// Creating Floor
+
+				let floorGeometry = new THREE.PlaneGeometry( 1000, 1000, 10, 10 );
+				floorGeometry.rotateX( - Math.PI / 2 );
+				
+				const floorMaterial = new THREE.MeshPhongMaterial( { color:0x0DB424, vertexColors: true, bumpMap: mapHeight, flatShading:false	 } );
+				floorMaterial.bumpScale = 2;
+
+				floor = new THREE.Mesh( floorGeometry, floorMaterial );
+				scene.add( floor );
+
+				
+				const floorMaterial2 = new THREE.MeshPhongMaterial( {color:0x0DB424, vertexColors: false, envMap: texSkybox[0], flatShading:false	 } );
+				floorMaterial2.bumpScale =100;
+
+				floor2 = new THREE.Mesh( floorGeometry, floorMaterial2 );
+				
+
+				// Creating Water 
+				const waterGeometry = new THREE.PlaneGeometry(1000, 1000, 100, 100 );
+
+				water = new Water( waterGeometry, {
+					color: params.color,
+					scale: params.scale,
+					flowDirection: new THREE.Vector2( params.flowX, params.flowY ),
+					textureWidth: 1024,
+					textureHeight: 1024
+				} );
+
+				water.position.y =1;
+				water.rotation.x = Math.PI * - 0.5;
+				scene.add( water );
+				
+				// Creating Water Red
+				waterRed = new Water( waterGeometry, {
+					color: 0xFA3232,
+					scale: params.scale,
+					flowDirection: new THREE.Vector2( params.flowX, params.flowY ),
+					textureWidth: 1024,
+					textureHeight: 1024
+				} );
+
+				waterRed.position.y =1;
+				waterRed.rotation.x = Math.PI * - 0.5;
+
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				document.body.appendChild( renderer.domElement );
+
+				
+				function onMouseMove( event ) {
+
+				// calculate mouse position in normalized device coordinates
+				// (-1 to +1) for both components
+
+				mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+				mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+				}
+
+				window.addEventListener( 'resize', onWindowResize );
+				window.addEventListener( 'mousemove', onMouseMove, false );
+				window.addEventListener( 'click', onClick );
+
+				removeForForest();
+				removeForValley();
+				removeForRedLake();
+			}
+			function onClick()
+			{
+			}
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function animate() {
+				const delta = clock.getDelta();
+				requestAnimationFrame( animate );
+				Movement();
+				if (mixerSwimmer && swimmer ) mixerSwimmer.update( delta );
+				if( mixerArcher && sittingArcher ) mixerArcher.update(delta);
+				if( mixerButterfly && butterfly ) mixerButterfly.update(delta);
+				render();
+				
+			}
+
+			// This function removes assets from the scene before loading Forest
+			// removing models or geometries which are loaded fast
+			function removeForForest()
+			{
+				//#region Remove Texts
+				// removing tutorial texts
+				if(scene.children.includes(levelTutorialTexts[2]))
+				{
+					scene.remove(levelTutorialTexts[2]);
+				}
+				if(scene.children.includes(levelTutorialTexts[3]))
+				{
+					scene.remove(levelTutorialTexts[3]);
+				}
+				
+				if(scene.children.includes(levelTexts[2]))
+				{
+					scene.remove(levelTexts[2]);
+				}
+				if(scene.children.includes(levelTexts[3]))
+				{
+					scene.remove(levelTexts[3]);
+				}
+				//#endregion
+				
+				// removing water
+				if(scene.children.includes(waterRed) || scene.children.includes(water) )
+				{
+					scene.remove( water);
+					scene.remove(waterRed);
+				}
+				
+				// remove buddha
+				for(let i = 0; i< buddhaLights.length;i++)
+				{
+					if(scene.children.includes(buddhaLights[i]))
+					{
+						scene.remove(buddhaLights[i]);
+					}
+					
+				}
+
+				// remove statue lights
+				for(let i = 0; i< statueLights.length;i++)
+				{
+					if(scene.children.includes(statueLights[i]))
+					{
+						scene.remove(statueLights[i]);
+					}
+					
+				}
+
+				// remove girl lights
+				for(let i = 0; i< girlLights.length;i++)
+				{
+					if(scene.children.includes(girlLights[i]))
+					{
+						scene.remove(girlLights[i]);
+					}
+					
+				}
+
+				// remove valleylights
+				for(let i = 0; i< valleyLights.length;i++)
+				{
+					if(scene.children.includes(valleyLights[i]))
+					{
+						scene.remove(valleyLights[i]);
+					}
+				}
+				
+				if(scene.children.includes(statue))
+				{
+					scene.remove(statue);
+				}
+				if(scene.children.includes(swimmer))
+				{
+					scene.remove(swimmer);
+				}
+				if(scene.children.includes(rock))
+				{
+					scene.remove(rock);
+				}
+				if(scene.children.includes(buddha))
+				{
+					scene.remove(buddha);
+				}
+					
+			}
+
+			function loadForest()
+			{
+				const delta = clock.getDelta();
+
+				// Adding tutorial and texts
+				if(!scene.children.includes(levelTutorialTexts[1]))
+				{
+					scene.add(levelTutorialTexts[1]);
+				}
+				
+				if(scene.children.includes(levelTutorialTexts[1]))
+				{
+					levelTutorialTexts[1].position.y = portalCubes[0].position.y + 100;
+					levelTutorialTexts[1].position.x = portalCubes[0].position.x;
+					levelTutorialTexts[1].position.z = 400;
+					levelTutorialTexts[1].scale.set(2,2,2);
+
+					if(rotateTutorial)
+					{
+						levelTutorialTexts[1].rotation.y-=delta * 20;
+					}
+				}
+
+				if(scene.children.includes(rock))
+				{
+					scene.remove(rock);
+				}
+
+				if(!scene.children.includes(levelTexts[1]))
+				{
+					scene.add(levelTexts[1]);
+				}
+				
+				if(scene.children.includes(levelTexts[1]))
+				{
+					levelTexts[1].position.x = portalCubes[0].position.x;					
+				}
+
+
+				// loading archer
+				if(!scene.children.includes(sittingArcher))
+				{
+					scene.add(sittingArcher);
+				}
+
+
+				// setting up the position of the archer
+				if(BigTrees[1] && sittingArcher && sittingArcher.position.x!=treeBoxes[1].position.x + 12 && sittingArcher.position.z != treeBoxes[1].position.z+40)
+				{
+					sittingArcher.position.x = treeBoxes[2].position.x + 17;
+					sittingArcher.position.z = treeBoxes[2].position.z + 40;
+					archerBox.position.copy(sittingArcher.position);
+
+				}
+				
+				if(!scene.children.includes(floor2))
+				{
+					scene.add(floor2);
+				}
+				if(scene.children.includes(floor))
+				{
+					scene.remove(floor);
+				}
+
+				// removing statues
+				for(let i = 0; i< statues.length;i++)
+				{
+					if(scene.children.includes(statues[i]))
+					{
+						scene.remove(statues[i]);
+					}
+					
+				}
+
+				// remove girl heads
+				for(let i = 0; i< girlHead.length;i++)
+				{
+					if(scene.children.includes(girlHead[i]))
+					{
+						scene.remove(girlHead[i]);
+					}
+					
+				}	
+
+				// load big trees
+				for(let i = 0; i< BigTrees.length;i++)
+				{
+					if(!scene.children.includes(BigTrees[i]))
+					{
+						scene.add(BigTrees[i]);
+					}
+					
+				}
+
+				// load small trees
+				for(let i = 0; i< smallTrees.length;i++)
+				{
+					if(!scene.children.includes(smallTrees[i]))
+					{
+						scene.add(smallTrees[i]);
+					}
+					
+				}
+					
+				// load lights
+				for(let i = 0; i< movingLights.length;i++)
+				{
+					if(!scene.children.includes(movingLights[i] && !toggleBigTreeLights))
+					{
+						scene.add(movingLights[i]);
+					}
+					
+				}
+
+				for(let i = 0; i< sTreeMovingLights.length;i++)
+				{
+					if(!scene.children.includes(sTreeMovingLights[i] && !toggleSmallTreeLights))
+					{
+						scene.add(sTreeMovingLights[i]);
+					}
+					
+				}
+
+				if(toggleSmallTreeLights)
+				{
+					scene.remove(...sTreeMovingLights);
+				}
+
+				if(toggleBigTreeLights)
+				{
+					scene.remove(...movingLights)
+				}
+				
+				
+				portalCubes[0].rotation.y += delta * 15;
+				portalCubes[0].rotation.z = 0;
+				portalCubes[0].rotation.x = 0;
+				portalCubes[2].rotation.set(0,0,0);
+				portalCubes[1].rotation.set(0,0,0);
+			}
+
+			function removeForValley()
+			{
+				// Remove other tutorial texts
+				if(scene.children.includes(levelTutorialTexts[1]))
+				{
+					scene.remove(levelTutorialTexts[1]);
+				}
+				if(scene.children.includes(levelTutorialTexts[3]))
+				{
+					scene.remove(levelTutorialTexts[3]);
+				}
+
+				// Removing Other Level Texts
+				if(scene.children.includes(levelTexts[1]))
+				{
+					scene.remove(levelTexts[1]);
+				}
+				if(scene.children.includes(levelTexts[3]))
+				{
+					scene.remove(levelTexts[3]);
+				}
+
+				// removing moving lights
+				for(let i = 0; i< movingLights.length;i++)
+				{
+					if(scene.children.includes(movingLights[i]))
+					{
+						scene.remove(movingLights[i]);
+					}
+					
+				}
+
+				// removing small tree moving lights
+				for(let i = 0; i< sTreeMovingLights.length;i++)
+				{
+					if(scene.children.includes(sTreeMovingLights[i]))
+					{
+						scene.remove(sTreeMovingLights[i]);
+					}
+					
+				}
+
+				// removing statue lights
+				for(let i = 0; i< statueLights.length;i++)
+				{
+					if(scene.children.includes(statueLights[i]))
+					{
+						scene.remove(statueLights[i]);
+					}
+					
+				}
+
+				// removing girlLights
+				for(let i = 0; i< girlLights.length;i++)
+				{
+					if(scene.children.includes(girlLights[i]))
+					{
+						scene.remove(girlLights[i]);
+					}
+					
+				}
+
+					// removing statues
+				for(let i = 0; i< statues.length;i++)
+				{
+					if(scene.children.includes(statues[i]))
+					{
+						scene.remove(statues[i]);
+					}
+					
+				}
+
+				// removing girl
+				for(let i = 0; i< girlHead.length;i++)
+				{
+					if(scene.children.includes(girlHead[i]))
+					{
+						scene.remove(girlHead[i]);
+					}
+					
+				}	
+
+			
+				// removing floor 2
+				if(scene.children.includes(floor2))
+					{
+						scene.remove(floor2);
+					}
+				// removing waterRed 
+				if(scene.children.includes(waterRed))
+					{
+						scene.remove(waterRed);
+					}
+			}
+			function loadValley()
+			{
+				const delta = clock.getDelta();
+				// ambientLight.intensity = 40;
+				if(!scene.children.includes(levelTutorialTexts[2]))
+				{
+					scene.add(levelTutorialTexts[2]);
+				}
+				
+				if(scene.children.includes(levelTutorialTexts[2]))
+				{
+					levelTutorialTexts[2].position.x = portalCubes[0].position.x;
+					if(rotateTutorial)
+					{
+						levelTutorialTexts[2].rotation.y-=delta * 20;
+					}
+				}
+
+
+				if(!scene.children.includes(levelTexts[2]))
+				{
+					scene.add(levelTexts[2]);
+				}
+				
+				if(scene.children.includes(levelTexts[2]))
+				{
+					levelTexts[2].position.x = portalCubes[1].position.x - 5;
+				}
+			
+				// removing big trees
+				for(let i = 0; i< BigTrees.length;i++)
+				{
+					if(scene.children.includes(BigTrees[i]))
+					{
+						scene.remove(BigTrees[i]);
+					}
+					
+				}
+
+				// removing archer
+				if(scene.children.includes(sittingArcher))
+				{
+					scene.remove(sittingArcher);
+				}
+
+				// removing small trees
+				for(let i = 0; i< smallTrees.length;i++)
+				{
+					if(scene.children.includes(smallTrees[i]))
+					{
+						scene.remove(smallTrees[i]);
+					}
+					
+				}
+
+				// loading buddha
+				if(!scene.children.includes(buddha))
+					{
+						scene.add(buddha);
+					}
+
+				// loading rock
+				if(!scene.children.includes(rock) && !removerock)
+				{
+					scene.add(rock);
+				}
+
+				if(removerock)
+				{
+					scene.remove(rock);
+				}
+				
+				// loading lights
+				for(let i = 0; i< buddhaLights.length;i++)
+				{
+					if(!scene.children.includes(buddhaLights[i]) && !toggleBuddhaLights)
+					{
+						scene.add(buddhaLights[i]);
+					}
+					
+				}
+				
+				if(toggleBuddhaLights)
+				{
+					scene.remove(...buddhaLights);
+				}
+			
+				// moving swimmer
+				if(canMoveSwimmer)
+				{
+					swimmer.position.x+= swimSpeed;
+
+					if(swimmer.position.x < 0 || swimmer.position.x > 20 )
+					{
+						swimSpeed *= -1;
+						swimmer.rotation.y *= -1;
+					}
+				}
+				
+			
+				scene.add(floor);
+				
+				// decreasing the floor y  
+				if(scene.children.includes(floor))
+				{
+					floor.position.y = -10;
+				}
+
+				// loading water
+				if(!scene.children.includes(water))
+				{
+					scene.add( water);
+				}
+				
+				// loading swimmer
+				if(!scene.children.includes(swimmer))
+				{
+					scene.add( swimmer );
+				}
+
+				// adding valley lights
+				for(let i = 0; i< valleyLights.length;i++)
+				{
+					if(!scene.children.includes(valleyLights[i]))
+					{
+						scene.add(valleyLights[i]);
+					}
+					
+				}
+					
+				portalCubes[1].rotation.y += delta * 15;
+				portalCubes[1].rotation.z = 0;
+				portalCubes[1].rotation.x = 0;
+				portalCubes[2].rotation.set(0,0,0);
+				portalCubes[0].rotation.set(0,0,0);
+			}
+			
+
+			function removeForRedLake()
+			{
+				// Removing Other Tutorial texts
+				if(scene.children.includes(levelTutorialTexts[1]))
+				{
+					scene.remove(levelTutorialTexts[1]);
+				}
+				if(scene.children.includes(levelTutorialTexts[2]))
+				{
+					scene.remove(levelTutorialTexts[2]);
+				}
+
+
+				// Removing Other Level Texts
+				if(scene.children.includes(levelTexts[1]))
+				{
+					scene.remove(levelTexts[1]);
+				}
+				if(scene.children.includes(levelTexts[2]))
+				{
+					scene.remove(levelTexts[2]);
+				}
+
+				// removing floor2
+				if(scene.children.includes(floor2))
+				{
+					scene.remove(floor2);
+				}
+
+				// removing buddha
+				if(scene.children.includes(buddha))
+				{
+					scene.remove(buddha);
+				}
+				
+				// remove swimmer
+				if(scene.children.includes(swimmer))
+				{
+					scene.remove(swimmer);
+				}
+
+				// remove valley lights
+				for(let i = 0; i< valleyLights.length;i++)
+				{
+					if(scene.children.includes(valleyLights[i]))
+					{
+						scene.remove(valleyLights[i]);
+					}
+					
+				}
+
+				// remove water
+				if(scene.children.includes(water))
+				{
+					scene.remove(water);
+				}	
+
+				// remove small tree lights
+
+				for(let i = 0; i< sTreeMovingLights.length;i++)
+				{
+					if(scene.children.includes(sTreeMovingLights[i]))
+					{
+						scene.remove(sTreeMovingLights[i]);
+					}
+					
+				}
+
+				// remove moving lights
+				for(let i = 0; i< movingLights.length;i++)
+				{
+					if(scene.children.includes(movingLights[i]))
+					{
+						scene.remove(movingLights[i]);
+					}
+					
+				}
+				
+				// remove buddha lights
+				for(let i = 0; i< buddhaLights.length;i++)
+				{
+					if(scene.children.includes(buddhaLights[i]))
+					{
+						scene.remove(buddhaLights[i]);
+					}
+					
+				}
+
+			}
+
+			function loadRedLake()
+			{
+				const delta = clock.getDelta();
+
+				// Tutorial Texts
+				if(!scene.children.includes(levelTutorialTexts[3]))
+				{
+					scene.add(levelTutorialTexts[3]);
+				}
+				
+				if(scene.children.includes(levelTutorialTexts[3]))
+				{
+					
+					levelTutorialTexts[2].position.x = portalCubes[0].position.x;
+					if(rotateTutorial)
+					{
+						levelTutorialTexts[3].rotation.y-=delta * 20;
+					}
+				}
+				
+				// Level Texts
+				if(!scene.children.includes(levelTexts[3]))
+				{
+					scene.add(levelTexts[3]);
+				}
+				
+				if(scene.children.includes(levelTexts[3]))
+				{
+					levelTexts[3].position.x = portalCubes[2].position.x;
+				}
+
+				// remove rock
+				if(scene.children.includes(rock))
+				{
+					scene.remove(rock);
+				}
+
+				// remove swimmer
+				if(scene.children.includes(swimmer))
+				{
+					scene.remove(swimmer);
+				}
+				// remove archer
+				if(scene.children.includes(sittingArcher))
+				{
+					scene.remove(sittingArcher);
+				}
+
+				// add floor
+				if(!scene.children.includes(floor))
+				{
+					scene.add(floor);
+				}
+
+				// add statues	
+				for(let i = 0; i < statues.length; i++)
+				{
+					if(!scene.children.includes(statues[i]))
+					{
+						scene.add( statues[i] );
+					}
+				}
+
+				// add girl heads
+				for(let i = 0; i < girlHead.length; i++)
+				{
+					if(!scene.children.includes(girlHead[i]))
+					{
+						scene.add( girlHead[i] );
+					}
+				}
+
+				// load waterRed
+				if(!scene.children.includes(waterRed))
+				{
+					scene.add(waterRed);
+				}	
+
+				// remove big trees
+				for(let i = 0; i< BigTrees.length;i++)
+				{
+					if(scene.children.includes(BigTrees[i]))
+					{
+						scene.remove(BigTrees[i]);
+					}
+					
+				}
+
+				// remove small trees
+				for(let i = 0; i< smallTrees.length;i++)
+				{
+					if(scene.children.includes(smallTrees[i]))
+					{
+						scene.remove(smallTrees[i]);
+					}
+					
+				}
+
+				// add girl lights
+				for(let i = 0; i< girlLights.length;i++)
+				{
+					if(!scene.children.includes(girlLights[i]) && !toggleGirlLights)
+					{
+						scene.add(girlLights[i]);
+					}
+					
+				}
+
+				// add  statue lights
+				for(let i = 0; i< statueLights.length;i++)
+				{
+					if(!scene.children.includes(statueLights[i]) && !toggleStatueLights)
+					{
+						scene.add(statueLights[i]);
+					}
+					
+				}
+
+				if(toggleGirlLights)
+				{
+					scene.remove(...girlLights);
+				}
+
+				if(toggleStatueLights)
+				{
+					scene.remove(...statueLights);
+				}
+				portalCubes[2].rotation.y += delta * 15;
+				portalCubes[2].rotation.z = 0;
+				portalCubes[2].rotation.x = 0;
+				portalCubes[0].rotation.set(0,0,0);
+				portalCubes[1].rotation.set(0,0,0);
+			}
+			function Movement()
+			{
+				const time = performance.now();
+				const delta = clock.getDelta();
+				if ( PointControls.isLocked === true ) {
+
+					raycaster.ray.origin.copy( PointControls.getObject().position );
+					raycaster.ray.origin.y -= 10;
+								
+					const delta = ( time - prevTime ) / 1000;
+
+					velocity.x -= velocity.x * 10.0 * delta;
+					velocity.z -= velocity.z * 10.0 * delta;
+
+					direction.z = Number( moveForward ) - Number( moveBackward );
+					direction.x = Number( moveRight ) - Number( moveLeft );
+					direction.normalize(); // this ensures consistent movements in all directions
+
+					if ( moveForward || moveBackward ) velocity.z -= direction.z * 400.0 * delta;
+					if ( moveLeft || moveRight ) velocity.x -= direction.x * 400.0 * delta;
+
+
+					PointControls.moveRight( - velocity.x * delta );
+					PointControls.moveForward( - velocity.z * delta );
+
+					PointControls.getObject().position.y += ( velocity.y * delta ); // new behavior
+
+					if ( PointControls.getObject().position.y < 10 ) {
+
+						velocity.y = 0;
+						PointControls.getObject().position.y = 10;
+					}
+					
+				}
+			}
+
+			function animateBuddhaLights(timeD)
+			{
+				buddhaLights[0].position.x =buddhaBox.position.x + Math.sin( timeD * 0.4 ) * 40;
+				buddhaLights[0].position.y = 60 +  Math.sin( timeD * 0.5 ) * 10;
+				buddhaLights[0].position.z = buddhaBox.position.z+ Math.cos( timeD * 0.6 ) * 40;
+
+				buddhaLights[1].position.x =buddhaBox.position.x + Math.cos( timeD * 0.5 ) * 40;
+				buddhaLights[1].position.y = 70+  Math.sin( timeD * 0.1 ) * 10;
+				buddhaLights[1].position.z = buddhaBox.position.z  + Math.sin( timeD * 0.2 ) * 40;
+
+				buddhaLights[2].position.x =buddhaBox.position.x + Math.sin( timeD * 0.5 ) * 40;
+				buddhaLights[2].position.y = 80 +  Math.cos( timeD * 0.1 ) * 10;
+				buddhaLights[2].position.z = buddhaBox.position.z  + Math.cos( timeD * 0.2 ) * 40;
+
+				for(let i = 0; i <buddhaLights.length;i++ )
+				{
+					buddhaLights[i].rotation.y+= timeD * 1;
+					buddhaLights[i].rotation.z+= timeD * 1;
+				}
+			}
+
+			function animateValleyLights(timeD)
+			{
+				
+				valleyLights[0].position.x = Math.sin( timeD * 0.4 ) * 100;
+				valleyLights[0].position.y = 20 +  Math.sin( timeD * 0.5 ) * 20;
+				valleyLights[0].position.z = 80 + Math.cos( timeD * 0.2 ) * 200;
+
+				valleyLights[1].position.x =Math.cos( timeD * 0.1 ) * 100;
+				valleyLights[1].position.y = 20+  Math.sin( timeD * 0.1 ) * 60;
+				valleyLights[1].position.z =200 + Math.sin( timeD * 0.2 ) * 100;
+
+				valleyLights[2].position.x =Math.sin( timeD * 0.5 ) * 100;
+				valleyLights[2].position.y = 20 +  Math.cos( timeD * 0.1 ) * 30;
+				valleyLights[2].position.z =80 + Math.cos( timeD * 0.2 ) * 100;
+
+				valleyLights[3].position.x =Math.sin( timeD * 0.3 ) * 100;
+				valleyLights[3].position.y = 60 +  Math.sin( timeD * 0.4 ) * 70;
+				valleyLights[3].position.z = buddhaBox.position.z+ Math.sin( timeD * 0.6 ) * 150;
+
+				valleyLights[4].position.x =Math.cos( timeD * 0.3 ) * 100;
+				valleyLights[4].position.y = 70+  Math.sin( timeD * 0.1 ) * 10;
+				valleyLights[4].position.z =20 + Math.sin( timeD * 0.2 ) * 80;
+
+				valleyLights[5].position.x =Math.sin( timeD * 0.3 ) * 100;
+				valleyLights[5].position.y = 80 +  Math.cos( timeD * 0.1 ) * 50;
+				valleyLights[5].position.z =80 + Math.cos( timeD * 0.2 ) * 100;
+
+				valleyLights[6].position.x =Math.sin( timeD * 0.3 ) * 100;
+				valleyLights[6].position.y = 60 +  Math.cos( timeD * 0.2 ) * 10;
+				valleyLights[6].position.z = 80 + buddhaBox.position.z+ Math.sin( timeD * 0.4) * 160;
+
+				valleyLights[7].position.x =Math.cos( timeD * 0.3 ) * 90;
+				valleyLights[7].position.y = 70 + Math.sin( timeD * 0.1 ) * 10;
+				valleyLights[7].position.z =120 + Math.sin( timeD * 0.2 ) * 120;
+
+				for(let i = 0; i <valleyLights.length;i++ )
+				{
+					valleyLights[i].rotation.y+= timeD * 1;
+					valleyLights[i].rotation.z+= timeD * 1;
+				}
+
+			}
+
+
+			function animateArcherLights(timeD)
+			{
+				sTreeMovingLights[6].position.x =archerBox.position.x + Math.sin( timeD * 0.4 ) * 10;
+				sTreeMovingLights[6].position.y = 10 +  Math.cos( timeD * 0.5 ) * 10;
+				sTreeMovingLights[6].position.z = archerBox.position.z+ Math.sin( timeD * 0.6 ) * 10;
+
+				sTreeMovingLights[7].position.x =archerBox.position.x + Math.cos( timeD * 0.5 ) * 10;
+				sTreeMovingLights[7].position.y = 15 +  Math.sin( timeD * 0.1 ) * 10;
+				sTreeMovingLights[7].position.z = archerBox.position.z  + Math.sin( timeD * 0.2 ) * 10;
+
+				sTreeMovingLights[8].position.x =archerBox.position.x + Math.sin( timeD * 0.5 ) * 10;
+				sTreeMovingLights[8].position.y = 20 +  Math.cos( timeD * 0.1 ) * 10;
+				sTreeMovingLights[8].position.z = archerBox.position.z  + Math.cos( timeD * 0.2 ) * 10;
+			}
+
+			function animateBigTreeLights(timeD)
+			{
+				movingLights[0].position.x =treeBoxes[0].position.x + Math.sin( timeD * 0.3 ) * 30;
+				movingLights[0].position.y = 20 +  Math.cos( timeD * 0.7 ) * 10;
+				movingLights[0].position.z = treeBoxes[0].position.z+ Math.sin( timeD * 0.5 ) * 30;
+
+				movingLights[1].position.x =treeBoxes[0].position.x + Math.cos( timeD * 0.3 ) * 30;
+				movingLights[1].position.y = 50 +  Math.sin( timeD * 0.7 ) * 10;
+				movingLights[1].position.z = treeBoxes[0].position.z + Math.sin( timeD * 0.5 ) * 30;
+
+				movingLights[2].position.x =treeBoxes[0].position.x + Math.sin( timeD * 0.3 ) * 30;
+				movingLights[2].position.y = 60 +  Math.cos( timeD * 0.7 ) * 10;
+				movingLights[2].position.z = treeBoxes[0].position.z + Math.cos( timeD * 0.5 ) * 30;
+				
+
+				movingLights[3].position.x =treeBoxes[1].position.x + Math.sin( timeD * 0.6 ) * 30;
+				movingLights[3].position.y = 20 +  Math.cos( timeD * 0.2 ) * 10;
+				movingLights[3].position.z = treeBoxes[1].position.z + Math.sin( timeD * 0.5 ) * 30;
+
+				movingLights[4].position.x =treeBoxes[1].position.x + Math.cos( timeD * 0.5 ) * 30;
+				movingLights[4].position.y = 50 +  Math.sin( timeD * 0.1 ) * 10;
+				movingLights[4].position.z = treeBoxes[1].position.z  + Math.sin( timeD * 0.2 ) * 30;
+
+				movingLights[5].position.x =treeBoxes[1].position.x + Math.sin( timeD * 0.5 ) * 30;
+				movingLights[5].position.y = 60 +  Math.cos( timeD * 0.8 ) * 10;
+				movingLights[5].position.z = treeBoxes[1].position.z + Math.cos( timeD * 0.2 ) * 30;
+				
+
+				movingLights[6].position.x =treeBoxes[2].position.x + Math.sin( timeD * 0.5 ) * 30;
+				movingLights[6].position.y = 20 +  Math.cos( timeD * 0.1 ) * 10;
+				movingLights[6].position.z = treeBoxes[2].position.z + Math.sin( timeD * 0.6 ) * 30;
+
+				movingLights[7].position.x =treeBoxes[2].position.x + Math.cos( timeD * 0.7 ) * 30;
+				movingLights[7].position.y = 50 +  Math.sin( timeD * 0.4 ) * 10;
+				movingLights[7].position.z = treeBoxes[2].position.z + Math.sin( timeD * 0.2 ) * 30;
+
+				movingLights[8].position.x =treeBoxes[2].position.x + Math.sin( timeD * 0.1 ) * 30;
+				movingLights[8].position.y = 60 +  Math.cos( timeD * 0.3 ) * 10;
+				movingLights[8].position.z = treeBoxes[2].position.z + Math.cos( timeD * 0.1 ) * 30;
+			}
+			
+			
+			function render()
+			{	
+				const timeD = Date.now() * 0.005;
+				const time = performance.now();
+				const delta = clock.getDelta();
+
+				prevTime = time;
+
+				// moving light infront of user
+				light1.position.x =camera.position.x + Math.sin( timeD * 0.7 ) * 5;
+				light1.position.y = 6 +  Math.cos( timeD * 0.7 ) * 2;
+				light1.position.z = camera.position.z + Math.cos( timeD * 0.7 ) *8 ;
+
+				if(BigTrees[0] && BigTrees[1] && BigTrees[2])
+				{
+					animateBigTreeLights(timeD);
+				}
+
+				// animating small tree lights
+				for(let i=0; i<smallTreeBoxes.length; i++)
+				{
+					sTreeMovingLights[i].position.x =smallTreeBoxes[i].position.x + Math.sin( timeD * 0.3 ) * 10;
+					sTreeMovingLights[i].position.y = 20 +  Math.cos( timeD * 0.7 ) * 10;
+					sTreeMovingLights[i].position.z = smallTreeBoxes[i].position.z+ Math.sin( timeD * 0.5 ) * 10;
+				}
+				
+				
+				// giving the statues and the girl heads a floating animation
+				for(let i=0; i< statues.length;i++)
+				{
+					
+					statues[i].position.y+=statuesSpeed;
+
+					if(statues[i].position.y>=10 || statues[i].position.y<9)
+					{
+						statuesSpeed *= -1;
+					}
+					
+				}
+
+				for(let i=0; i< girlHead.length;i++)
+				{
+					girlHead[i].position.y+=girlHeadSpeed;
+
+					if(girlHead[i].position.y>=2 || girlHead[i].position.y<0)
+					{
+						girlHeadSpeed *= -1;
+					}
+					
+				}
+
+			
+
+				if(canRotateStatues)
+				{
+					for(let i=0; i< statues.length;i++)
+					{
+						
+						statues[i].rotation.y+=delta * 15;
+					}
+
+					for(let i=0; i< girlHead.length;i++)
+					{
+						
+						girlHead[i].rotation.y+=delta * 15;
+						
+					}
+				}
+				
+				raycaster.setFromCamera( mouse, camera );
+
+				// calculate objects intersecting
+				intersects = raycaster.intersectObjects( portalCubes);
+				
+				if(intersects.length == 0)
+				{
+					portalAnimation = true;
+				}
+
+				
+				for ( let i = 0; i < intersects.length; i ++ ) {
+
+					intersects[ i ].object.rotation.x +=0.005;
+					
+					portalAnimation = false;
+					if(scene.background!=intersects[ i ].object.material.envMap)
+					{
+						scene.background= intersects[ i ].object.material.envMap;
+						if(scene.background == texSkybox[0])
+						{
+							removeForForest();
+						}
+
+						if(scene.background == texSkybox[1])
+						{
+							removeForValley();
+						}
+						
+						if(scene.background == texSkybox[2])
+						{
+							removeForRedLake();
+						}
+						
+					}
+					
+				}
+			
+				if(scene.background == texSkybox[1] )
+				{
+					loadValley();
+					
+					if(buddha)
+					{
+						animateBuddhaLights(timeD);
+						if(valleyLightsFly)
+						{
+							animateValleyLights(timeD);
+						}
+
+					}
+
+					if(canFly)
+					{
+						PointControls.getObject().position.copy(valleyLights[flyingLight].position);
+					}
+						
+				}
+
+				if(scene.background == texSkybox[0] )
+				{
+					loadForest();
+					if(sittingArcher)
+					{
+						animateArcherLights(timeD);
+					}
+				
+				}
+				if(scene.background == texSkybox[2])
+				{    
+					loadRedLake();
+
+
+					// Animating Lights for Girl Heads and Statues
+					for(let i=0; i<girlHeadsBoxes.length; i++)
+					{
+						girlLights[i].position.x =girlHeadsBoxes[i].position.x + Math.sin( timeD * 0.3 ) * 10;
+						girlLights[i].position.y = 10 +  Math.sin( timeD * 0.7 ) * 10;
+						girlLights[i].position.z = girlHeadsBoxes[i].position.z+ Math.cos( timeD * 0.5 ) * 10;
+					}
+					
+					for(let i=0; i<statueBoxes.length; i++)
+					{
+						statueLights[i].position.x =statueBoxes[i].position.x + Math.sin( timeD * 0.3 ) * 10;
+						statueLights[i].position.y = 20 +  Math.sin( timeD * 0.7 ) * 10;
+						statueLights[i].position.z = statueBoxes[i].position.z+ Math.cos( timeD * 0.5 ) * 10;
+					}
+				}
+
+				// Setting up Portal text position
+				if(levelTexts[0])
+				{
+					scene.add(levelTexts[0]);
+					levelTexts[0].position.x = portalCubes[1].position.x - 18;
+					levelTexts[0].position.y = portalCubes[1].position.y + 25;
+					levelTexts[0].position.z = portalCubes[1].position.z - 10;
+
+					// levelTexts[0].rotation.y *=-1;
+				}
+				if(toggleMovingLight)
+				{
+					scene.remove(light1);
+				}
+				
+				if(!scene.children.includes(light1)&&!toggleMovingLight)
+				{
+					scene.add(light1);
+				}
+				if(levelTexts[0])
+				{
+					levelTexts[0].scale.set(0.2,0.2,0.2);
+				}
+			
+				renderer.render( scene, camera );
+			}
+
+		</script>
+	</body>
+</html>
